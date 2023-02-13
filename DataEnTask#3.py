@@ -1,8 +1,9 @@
 import os
-from datetime import datetime
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
+
+from mylogger import log_entry
 
 os.environ["PYSPARK_PYTHON"] = sys.executable
 os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
@@ -18,19 +19,21 @@ spark = SparkSession \
     .appName("pyspark_job3") \
     .getOrCreate()
 
-print(datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " " + "Reading users data from parquet from GS")
+log_entry("Reading users data from parquet from GS")
 df_users = spark.read.parquet("gs://da_edu2022q4_dg/dataframe/users/*")
-print(datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " " + "Reading videos data from parquet from GS")
+log_entry("Reading videos data from parquet from GS")
 df_videos = spark.read.parquet("gs://da_edu2022q4_dg/dataframe/videos/*")
-print(datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " " + "Reading events data from parquet from GS")
-df_events = spark.read.option("mergeSchema", "true").parquet("gs://da_edu2022q4_dg/dataframe/events/")
-
-df_likes = df_events.where(col("event") == "like")
+log_entry("Reading events data from parquet from GS")
+df_likes = spark.read.option("mergeSchema", "true").parquet("gs://da_edu2022q4_dg/dataframe/events/event=like/")
+df_likes.show()
+# df_likes = df_events.where(col("event") == "like")
 df_videos = df_videos.withColumn("creation_timestamp", from_unixtime(col("creation_timestamp")))
 
 # df_videos.join(df_likes, df_videos.id == df_likes.video_id, "inner").show(truncate=False)
-print(datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " " + "Videos by likes count")
+log_entry("Videos by likes count")
 df_videos.join(df_likes, df_videos.id == df_likes.video_id, "inner").groupBy("name").count().show(truncate=False)
-print(datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " " + "Videos by likes by date")
-df_videos.join(df_likes, df_videos.id == df_likes.video_id, "inner").withColumn("event_date", to_date(col("timestamp"))).groupBy("name", "event_date").count().show(
+log_entry("Videos by likes by date")
+df_videos.join(df_likes, df_videos.id == df_likes.video_id, "inner").withColumn("event_date",
+                                                                                to_date(col("timestamp"))).groupBy(
+    "name", "event_date").count().show(
     truncate=False)
