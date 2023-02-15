@@ -4,7 +4,7 @@ import re
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
-from pyspark.sql.types import TimestampType
+from pyspark.sql.types import TimestampType, BooleanType
 
 from mylogger import log_entry
 
@@ -18,13 +18,22 @@ os.environ["PYSPARK_PYTHON"] = sys.executable
 os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
 
-def regex_checker(string, regex_value):
-    url = re.findall(regex_value, string)
-    url = [x[0] for x in url]
-    if url:
+def regex_checker(string_to_check, regex_value):
+    checked_value = re.findall(regex_value, string_to_check)
+    checked_value = [x[0] for x in checked_value]
+    if checked_value:
         return True
     else:
         return False
+
+
+def is_good_user(fname, lname, email):
+    if fname is None or lname is None or email is None:
+        return False
+    elif not regex_checker(email, regex_eml):
+        return False
+    else:
+        return True
 
 
 spark = SparkSession \
@@ -80,8 +89,7 @@ df_videos = spark.read.options(header="True").csv(data_path + "\\videos.csv")
 # Push videos with correct URL
 log_entry("Saving valid videos to the cloud storage")
 df_valid_videos = df_videos.filter(df_videos["url"].rlike(regex_url))
-df_non_valid_videos = df_videos.subtract(df_valid_videos)
-
+df_non_valid_videos = df_videos.filter(~df_videos["url"].rlike(regex_url))
 df_valid_videos.write.format("parquet").mode("overwrite").option("path",
                                                                  cloud_path_df + "/videos").save()
 
@@ -95,10 +103,10 @@ log_entry("Done. Videos with DF")
 log_entry("Reading users CSV file into the dataframe")
 df_users = spark.read.options(header="True").csv(data_path + "\\users.csv")
 
-df_valid_users = df_users.filter(
-    (~df_users["fname"].isNull()) & (~df_users["lname"].isNull()) & (~df_users["email"].isNull()) & df_users[
-        "email"].rlike(regex_eml))
-df_non_valid_users = df_videos.subtract(df_valid_videos)
+is_good_user_udf = udf(is_good_user, BooleanType())
+df_valid_users = df_users.filter(is_good_user_udf(df_users.fname, df_users.lname, df_users.email))
+df_non_valid_users = df_users.filter(~is_good_user_udf(df_users.fname, df_users.lname, df_users.email))
+
 log_entry("Saving valid users to the cloud storage")
 df_valid_users.write.format(
     "parquet").mode("overwrite").option("path",
@@ -135,8 +143,8 @@ rdd_videos_correct.toDF(videos_header).write.format("parquet").mode("overwrite")
 
 # A little beet hardcode cheating with the array size here...
 log_entry("Saving invalid videos to the cloud storage")
-rdd_videos_wrong.toDF(videos_header[:5]).write.format("parquet").mode("overwrite").option("path",
-                                                                                          cloud_path_rdd + "/videos_rdd_non_valid").save()
+rdd_videos_wrong.toDF().write.format("parquet").mode("overwrite").option("path",
+                                                                         cloud_path_rdd + "/videos_rdd_non_valid").save()
 log_entry("Done. Videos with RDD")
 # Read users CSV file into RDD
 log_entry("Reading users CSV file into the RDD")
@@ -146,8 +154,11 @@ rdd_users = rdd_users_raw.map(lambda x: x.split(","))
 users_header = rdd_users.first()
 rdd_data_users = rdd_users.filter(lambda row: row != users_header)
 
-rdd_users_correct = rdd_data_users.filter(lambda r: regex_checker(r[3], regex_eml))
-rdd_users_wrong = rdd_data_users.filter(lambda r: not regex_checker(r[3], regex_eml))
+# rdd_users_correct = rdd_data_users.filter(lambda r: regex_checker(r[3], regex_eml))
+rdd_users_correct = rdd_data_users.filter(lambda r: is_good_user(r[1], r[2], r[3]))
+rdd_users_wrong = rdd_data_users.filter(lambda r: not is_good_user(r[1], r[2], r[3]))
+
+# rdd_users_wrong = rdd_data_users.filter(lambda r: not regex_checker(r[3], regex_eml))
 # Push RDDs to the cloud
 log_entry("Saving valid users to the cloud storage")
 rdd_users_correct.toDF(users_header).write.format("parquet").mode("overwrite").option("path",
@@ -176,7 +187,7 @@ events_rdd = events_rdd.union(events_rdd2)
 log_entry("Convert timestamp to user-friendly format")
 df_events_rdd = events_rdd.toDF().withColumn("timestamp", col("timestamp").cast(TimestampType()))
 log_entry("Saving events to the cloud storage")
-df_events.write.format("parquet").partitionBy("event").mode("overwrite").option("path",
-                                                                                cloud_path_rdd + "/events").save()
+df_events_rdd.write.format("parquet").partitionBy("event").mode("overwrite").option("path",
+                                                                                    cloud_path_rdd + "/events").save()
 log_entry("Done. Events with RDD")
 log_entry("Done with RDD")
