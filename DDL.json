@@ -1,0 +1,16 @@
+[{
+  "table_name": "fact_videos",
+  "ddl": "CREATE TABLE `cosmic-rarity-392606.DG_Task4.fact_videos`\n(\n  VIDEO_KEY STRING NOT NULL,\n  VIDEO_ID INT64 NOT NULL,\n  NAME STRING NOT NULL,\n  URL STRING NOT NULL,\n  CREATOR_ID STRING NOT NULL,\n  PRIVATE INT64 NOT NULL,\n  EFFECTIVE_START TIMESTAMP,\n  EFFECTIVE_END TIMESTAMP,\n  ACTIVE BOOL,\n  DATAHASH BYTES\n);"
+}, {
+  "table_name": "users_raw",
+  "ddl": "CREATE TABLE `cosmic-rarity-392606.DG_Task4.users_raw`\n(\n  id INT64,\n  fname STRING,\n  lname STRING,\n  email STRING,\n  country STRING,\n  subscription STRING,\n  categories STRING,\n  updated_timestamp INT64,\n  datahash BYTES\n);"
+}, {
+  "table_name": "events_raw",
+  "ddl": "CREATE TABLE `cosmic-rarity-392606.DG_Task4.events_raw`\n(\n  comment STRING,\n  events ARRAY\u003cSTRUCT\u003cevent STRING, timestamp INT64, video_id INT64, comment STRING, user_id INT64\u003e\u003e,\n  timestamp INT64,\n  tags ARRAY\u003cSTRING\u003e,\n  event STRING,\n  video_id INT64,\n  user_id INT64\n);"
+}, {
+  "table_name": "videos_raw",
+  "ddl": "CREATE TABLE `cosmic-rarity-392606.DG_Task4.videos_raw`\n(\n  id INT64,\n  name STRING,\n  url STRING,\n  creation_timestamp STRING,\n  creator_id STRING,\n  private INT64,\n  updated_timestamp INT64,\n  datahash BYTES\n);"
+}, {
+  "table_name": "fact_users",
+  "ddl": "CREATE TABLE `cosmic-rarity-392606.DG_Task4.fact_users`\n(\n  USER_KEY STRING NOT NULL,\n  USER_ID INT64 NOT NULL,\n  FNAME STRING NOT NULL,\n  LNAME STRING NOT NULL,\n  EMAIL STRING NOT NULL,\n  COUNTRY STRING NOT NULL,\n  SUBSRIPTION INT64 NOT NULL,\n  EFFECTIVE_START TIMESTAMP,\n  EFFECTIVE_END TIMESTAMP,\n  ACTIVE BOOL,\n  DATAHASH BYTES\n);"
+}]
